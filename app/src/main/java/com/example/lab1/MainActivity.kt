@@ -1,10 +1,10 @@
 package com.example.lab1
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -27,7 +27,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,164 +42,304 @@ import androidx.compose.ui.unit.dp
 
 
 abstract class Person(val name: String, val maxHealth: Int) {
-    var health by mutableIntStateOf(maxHealth)
-    var isDef by mutableStateOf(false)
-    var isInvul by mutableStateOf(false)
+    var health: Int = maxHealth
+    var isDefended: Boolean = false
+    var isInvulnerable: Boolean = false
     val isAlive: Boolean get() = health > 0
 
+    abstract fun attack(target: Person)
+    abstract fun special(target: Person)
+    abstract fun getHeroType(): String
+
     fun defend() {
-        isDef = true
-        println("$name защищается")
+        isDefended = true
+        Log.d("Battle", "$name защищается")
+    }
+
+    protected fun applyDamage(target: Person, damage: Int) {
+        if (target.isInvulnerable) {
+            Log.d("Battle", "$name не может атаковать ${target.name} (неуязвим)")
+        } else if (target.isDefended) {
+            target.health = (target.health - damage / 2).coerceAtLeast(0)
+            Log.d("Battle", "$name атакует ${target.name} через блок. Здоровье: ${target.health}")
+        } else {
+            target.health = (target.health - damage).coerceAtLeast(0)
+            Log.d("Battle", "$name атакует ${target.name}. Здоровье: ${target.health}")
+        }
     }
 }
 
 class Archer(name: String) : Person(name, 70) {
-    val mainAttr: String = "Agility"
-    var countSpec by mutableIntStateOf(0)
+    var countSpecial = 0
 
-    fun attack(target: Person) {
-        if (target.isInvul) {
-            println("$name не может атаковать ${target.name} (неуязвим)")
-        } else if (target.isDef) {
-            target.health -= 35 / 2
-            println("$name атакует ${target.name} через блок. Здоровье цели: ${target.health}")
-        } else {
-            target.health -= 35
-            println("$name атакует ${target.name}. Здоровье цели: ${target.health}")
-        }
-    }
+    override fun attack(target: Person) = applyDamage(target, 35)
 
-    fun spec(target: Person) {
-        if (countSpec < 2) {
-            countSpec += 1
-            if (target.isInvul) {
-                println("$name не может пронзить ${target.name}")
+    override fun special(target: Person) {
+        if (countSpecial < 2) {
+            countSpecial += 1
+            if (target.isInvulnerable) {
+                Log.d("Battle", "$name не может пронзить ${target.name}")
             } else {
-                target.health -= 20
-                println("$name пронзает ${target.name}. Здоровье цели: ${target.health}")
+                target.health = (target.health - 20).coerceAtLeast(0)
+                Log.d("Battle", "$name пронзает ${target.name}. Здоровье: ${target.health}")
             }
         } else {
-            println("$name уже использовал спецприем 2 раза!")
+            Log.d("Battle", "$name уже использовал спецприем 2 раза!")
         }
     }
+
+    override fun getHeroType() = "Archer"
 }
 
 class Warrior(name: String) : Person(name, 110) {
-    val mainAttr: String = "Strength"
-    var countSpec by mutableIntStateOf(0)
+    var countSpecial = 0
 
-    fun attack(target: Person) {
-        if (target.isInvul) {
-            println("$name не может атаковать ${target.name} (неуязвим)")
-        } else if (target.isDef) {
-            target.health -= 20 / 2
-            println("$name атакует ${target.name} через блок. Здоровье цели: ${target.health}")
+    override fun attack(target: Person) = applyDamage(target, 20)
+
+    override fun special(target: Person) {
+        if (countSpecial < 2) {
+            countSpecial += 1
+            isInvulnerable = true
+            Log.d("Battle", "$name становится неуязвимым!")
         } else {
-            target.health -= 20
-            println("$name атакует ${target.name}. Здоровье цели: ${target.health}")
+            Log.d("Battle", "$name уже использовал спецприем 2 раза!")
         }
     }
 
-    fun spec() {
-        if (countSpec < 2) {
-            countSpec += 1
-            isInvul = true
-            println("$name становится неуязвимым!")
+    override fun getHeroType() = "Warrior"
+}
+
+class Mage(name: String) : Person(name, 80) {
+    var countSpecial = 0
+
+    override fun attack(target: Person) = applyDamage(target, 27)
+
+    override fun special(target: Person) {
+        if (countSpecial < 2) {
+            countSpecial += 1
+            if (target.isInvulnerable) {
+                Log.d("Battle", "$name не может использовать огненный шар на ${target.name}")
+            } else {
+                target.health = (target.health - 25).coerceAtLeast(0)
+                Log.d("Battle", "$name использует огненный шар на ${target.name}. Здоровье: ${target.health}")
+            }
         } else {
-            println("$name уже использовал спецприем 2 раза!")
+            Log.d("Battle", "$name уже использовал спецприем 2 раза!")
         }
     }
+
+    override fun getHeroType() = "Mage"
 }
 
 
+data class HeroUiState(
+    val name: String,
+    val maxHealth: Int,
+    val health: Int,
+    val isDefended: Boolean,
+    val isInvulnerable: Boolean,
+    val specUses: Int,
+    val heroType: String
+) {
+    val isAlive: Boolean get() = health > 0
+}
+
+data class BattleUiState(
+    val team1: List<HeroUiState>,
+    val team2: List<HeroUiState>,
+    val currentTeam1Index: Int = 0,
+    val currentTeam2Index: Int = 0,
+    val isTeam1Turn: Boolean = true,
+    val winnerMessage: String? = null
+)
+
+
 class BattleState {
-    val hero1 = Archer("Ви")
-    val hero2 = Warrior("Стен")
+    private var team1: List<Person> = emptyList()
+    private var team2: List<Person> = emptyList()
 
-    var isHero1Turn by mutableStateOf(true)
+    var state by mutableStateOf(createInitialState())
+        private set
 
-    val currentHero: Person get() = if (isHero1Turn) hero1 else hero2
-    val targetHero: Person get() = if (isHero1Turn) hero2 else hero1
+    private fun createInitialState(): BattleUiState {
+        team1 = listOf(
+            Archer("Ви"),
+            Warrior("Стен"),
+            Mage("Гэндальф")
+        )
+        team2 = listOf(
+            Archer("Леголас"),
+            Warrior("Гимли"),
+            Mage("Саруман")
+        )
 
-    init {
-        startTurn()
+        return BattleUiState(
+            team1 = team1.map { it.toUiState() },
+            team2 = team2.map { it.toUiState() }
+        )
     }
 
-    fun startTurn() {
-        currentHero.isDef = false
-        currentHero.isInvul = false
+    private fun Person.toUiState(): HeroUiState {
+        return HeroUiState(
+            name = name,
+            maxHealth = maxHealth,
+            health = health,
+            isDefended = isDefended,
+            isInvulnerable = isInvulnerable,
+            specUses = when (this) {
+                is Archer -> countSpecial
+                is Warrior -> countSpecial
+                is Mage -> countSpecial
+                else -> 0
+            },
+            heroType = getHeroType()
+        )
+    }
+
+    private fun updateUiState() {
+        state = state.copy(
+            team1 = team1.map { it.toUiState() },
+            team2 = team2.map { it.toUiState() }
+        )
+    }
+
+    private fun getActiveHero(): Person? {
+        val team = if (state.isTeam1Turn) team1 else team2
+        val index = if (state.isTeam1Turn) state.currentTeam1Index else state.currentTeam2Index
+        return team.getOrNull(index)?.takeIf { it.isAlive }
+    }
+
+    private fun getEnemyTeam(): List<Person> = if (state.isTeam1Turn) team2 else team1
+    private fun getEnemyIndex(): Int = if (state.isTeam1Turn) state.currentTeam2Index else state.currentTeam1Index
+
+    private fun findNextAliveIndex(team: List<Person>, startIndex: Int): Int {
+        if (team.none { it.isAlive }) return startIndex
+        var index = (startIndex + 1) % team.size
+        var attempts = 0
+        while (!team[index].isAlive && attempts < team.size) {
+            index = (index + 1) % team.size
+            attempts++
+        }
+        return index
+    }
+
+    private fun switchActiveHero() {
+        val isTeam1 = state.isTeam1Turn
+        val team = if (isTeam1) team1 else team2
+        val currentIndex = if (isTeam1) state.currentTeam1Index else state.currentTeam2Index
+        val newIndex = findNextAliveIndex(team, currentIndex)
+
+        state = if (isTeam1) {
+            state.copy(currentTeam1Index = newIndex)
+        } else {
+            state.copy(currentTeam2Index = newIndex)
+        }
+        updateUiState()
+    }
+
+    private fun ensureActiveHeroAlive() {
+        val isTeam1 = state.isTeam1Turn
+        val team = if (isTeam1) team1 else team2
+        val currentIndex = if (isTeam1) state.currentTeam1Index else state.currentTeam2Index
+
+        if (team.getOrNull(currentIndex)?.isAlive == false) {
+            val newIndex = findNextAliveIndex(team, currentIndex)
+            state = if (isTeam1) {
+                state.copy(currentTeam1Index = newIndex)
+            } else {
+                state.copy(currentTeam2Index = newIndex)
+            }
+            updateUiState()
+        }
+    }
+
+    private fun checkWinCondition() {
+        val team1Alive = team1.any { it.isAlive }
+        val team2Alive = team2.any { it.isAlive }
+
+        if (!team1Alive && !team2Alive) {
+            state = state.copy(winnerMessage = "Ничья! Все пали в бою.")
+        } else if (!team1Alive) {
+            state = state.copy(winnerMessage = "Команда 2 победила!")
+        } else if (!team2Alive) {
+            state = state.copy(winnerMessage = "Команда 1 победила!")
+        }
+    }
+
+    private fun endTurn() {
+        checkWinCondition()
+        if (state.winnerMessage != null) return
+
+
+        state = state.copy(isTeam1Turn = !state.isTeam1Turn)
+
+
+        val newActiveTeam = if (state.isTeam1Turn) team1 else team2
+        newActiveTeam.forEach { it.isDefended = false }
+        newActiveTeam.forEach { it.isInvulnerable = false }
+
+        ensureActiveHeroAlive()
+        updateUiState()
     }
 
     fun attack() {
-        if (isGameOver()) return
-        val current = currentHero
-        val target = targetHero
-        if (current is Archer) {
-            current.attack(target)
-        } else if (current is Warrior) {
-            current.attack(target)
-        }
+        if (state.winnerMessage != null) return
+        val attacker = getActiveHero() ?: return
+        val enemyTeam = getEnemyTeam()
+        val enemyIndex = getEnemyIndex()
+        val target = enemyTeam.getOrNull(enemyIndex)?.takeIf { it.isAlive } ?: return
+
+        attacker.attack(target)
+        updateUiState()
         endTurn()
     }
 
     fun defend() {
-        if (isGameOver()) return
-        currentHero.defend()
+        if (state.winnerMessage != null) return
+        val hero = getActiveHero() ?: return
+
+        hero.defend()
+        updateUiState()
         endTurn()
     }
 
-    fun spec() {
-        if (isGameOver()) return
-        val current = currentHero
-        val target = targetHero
-        if (current is Archer) {
-            current.spec(target)
-        } else if (current is Warrior) {
-            current.spec()
-        }
+    fun special() {
+        if (state.winnerMessage != null) return
+        val attacker = getActiveHero() ?: return
+        val enemyTeam = getEnemyTeam()
+        val enemyIndex = getEnemyIndex()
+        val target = enemyTeam.getOrNull(enemyIndex)?.takeIf { it.isAlive } ?: return
+
+        attacker.special(target)
+        updateUiState()
         endTurn()
     }
 
-    private fun endTurn() {
-        if (isGameOver()) return
-        isHero1Turn = !isHero1Turn
-        startTurn()
-    }
 
-    fun isGameOver(): Boolean = !hero1.isAlive || !hero2.isAlive
-
-    fun getWinner(): String = when {
-        !hero1.isAlive && !hero2.isAlive -> "Ничья!"
-        !hero1.isAlive -> "${hero2.name} победил!"
-        !hero2.isAlive -> "${hero1.name} победил!"
-        else -> "Бой продолжается"
+    fun switchHero() {
+        if (state.winnerMessage != null) return
+        switchActiveHero()
     }
 
     fun restart() {
-        hero1.health = hero1.maxHealth
-        hero1.isDef = false
-        hero1.isInvul = false
-        hero1.countSpec = 0
-
-        hero2.health = hero2.maxHealth
-        hero2.isDef = false
-        hero2.isInvul = false
-        hero2.countSpec = 0
-
-        isHero1Turn = true
-        startTurn()
+        state = createInitialState()
     }
 }
 
-
 @Composable
-fun HeroCard(hero: Person, isActive: Boolean, modifier: Modifier = Modifier) {
+fun HeroCard(hero: HeroUiState, isActive: Boolean, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(8.dp)
             .clip(RoundedCornerShape(12.dp))
-            .then(if (isActive) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)) else Modifier)
+            .then(
+                if (isActive) Modifier.border(
+                    2.dp,
+                    MaterialTheme.colorScheme.primary,
+                    RoundedCornerShape(12.dp)
+                ) else Modifier
+            )
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -209,12 +348,17 @@ fun HeroCard(hero: Person, isActive: Boolean, modifier: Modifier = Modifier) {
             modifier = Modifier.size(120.dp)
         ) {
             Image(
-                painter = if (hero is Warrior) painterResource(R.drawable.warrior)
-                          else painterResource(R.drawable.archer),
+                painter = when (hero.heroType)
+                {"Archer" -> painterResource(R.drawable.archer)
+                    "Warrior" -> painterResource(R.drawable.warrior)
+                    "Mage" -> painterResource(R.drawable.wizard)
+                    else -> painterResource(R.drawable.que)
+                },
                 contentDescription = hero.name,
                 modifier = Modifier.size(240.dp),
                 colorFilter = if (hero.isAlive) null
-                else ColorFilter.colorMatrix(ColorMatrix().apply
+                else ColorFilter.colorMatrix(
+                    ColorMatrix().apply
                 { setToSaturation(0f) }),
                 alpha = if (hero.isAlive) 1f else 0.5f
             )
@@ -223,7 +367,7 @@ fun HeroCard(hero: Person, isActive: Boolean, modifier: Modifier = Modifier) {
         Spacer(Modifier.height(12.dp))
 
         Text(
-            text = hero.name + " Ходит",
+            text = hero.name + if (isActive) " ️ (Ходит)" else "",
             fontWeight = FontWeight.Bold,
             color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
         )
@@ -232,7 +376,9 @@ fun HeroCard(hero: Person, isActive: Boolean, modifier: Modifier = Modifier) {
 
         LinearProgressIndicator(
             progress = { hero.health.toFloat() / hero.maxHealth },
-            modifier = Modifier.fillMaxWidth().height(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(12.dp),
             color = hpColor(hero.health, hero.maxHealth)
         )
 
@@ -244,7 +390,7 @@ fun HeroCard(hero: Person, isActive: Boolean, modifier: Modifier = Modifier) {
         )
 
         Text(
-            text = statusText(hero.health, hero.maxHealth, hero.isDef, hero.isInvul),
+            text = statusText(hero.health, hero.maxHealth, hero.isDefended, hero.isInvulnerable),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -254,6 +400,7 @@ fun HeroCard(hero: Person, isActive: Boolean, modifier: Modifier = Modifier) {
 @Composable
 fun BattleScreen(modifier: Modifier = Modifier) {
     val battle = remember { BattleState() }
+    val winner = battle.state.winnerMessage
 
     Column(
         modifier = modifier
@@ -263,73 +410,85 @@ fun BattleScreen(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
-            text = "️ АРЕНА ",
+            text = "ПОЛЕ БОЯ",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
         Column(modifier = Modifier.weight(1f)) {
-            HeroCard(hero = battle.hero1, isActive = battle.isHero1Turn)
-            HeroCard(hero = battle.hero2, isActive = !battle.isHero1Turn)
+            Text("Команда 1", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 4.dp))
+            val hero1 = battle.state.team1.getOrNull(battle.state.currentTeam1Index)
+            if (hero1 != null) {
+                HeroCard(
+                    hero = hero1,
+                    isActive = battle.state.isTeam1Turn && hero1.isAlive
+                )
+            }
         }
 
-        if (!battle.isGameOver()) {
+        Spacer(Modifier.height(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text("Команда 2", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 4.dp))
+            val hero2 = battle.state.team2.getOrNull(battle.state.currentTeam2Index)
+            if (hero2 != null) {
+                HeroCard(
+                    hero = hero2,
+                    isActive = !battle.state.isTeam1Turn && hero2.isAlive
+                )
+            }
+        }
+
+        if (winner == null) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val activeTeam = if (battle.state.isTeam1Turn) battle.state.team1 else battle.state.team2
+                val activeIndex = if (battle.state.isTeam1Turn) battle.state.currentTeam1Index else battle.state.currentTeam2Index
+                val currentHero = activeTeam.getOrNull(activeIndex)
+
                 Text(
-                    text = "Действие: ${battle.currentHero.name}",
+                    text = "Ходит: ${currentHero?.name ?: "Нет живых"}",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                // Основные действия
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Button(onClick = { battle.attack() }, modifier = Modifier.weight(1f)) { Text("Атака") }
+                    Button(onClick = { battle.defend() }, modifier = Modifier.weight(1f)) { Text("Защита") }
+                    Button(onClick = { battle.special() }, modifier = Modifier.weight(1f)) { Text("Спец.") }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                OutlinedButton(
+                    onClick = { battle.switchHero() },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Button(
-                        onClick = { battle.attack() },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Атака")
-                    }
-                    Button(
-                        onClick = { battle.defend() },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Защита")
-                    }
-                    Button(
-                        onClick = { battle.spec() },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Спец. прием")
-                    }
+                    Text(" Сменить героя (${activeTeam.count { it.isAlive }} живых)")
                 }
             }
         } else {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = battle.getWinner(),
+                    text = winner,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-                OutlinedButton(onClick = { battle.restart() }) {
-                    Text("Начать бой заново")
-                }
+                OutlinedButton(onClick = { battle.restart() }) { Text("Начать бой заново") }
             }
         }
     }
 }
 
-
-fun statusText(hp: Int, maxHp: Int, isDef: Boolean, isInvul: Boolean): String = when {
-    hp <= 0 -> "💀 Пал в бою"
-    isInvul -> "✨ Неуязвим"
-    isDef -> "🛡️ Защищается (след. атака слабее)"
-    hp < maxHp * 0.3 -> " Тяжело ранен"
-    hp <= maxHp -> "⚔️ Сражается"
+fun statusText(hp: Int, maxHp: Int, isDefended: Boolean, isInvulnerable: Boolean): String = when {
+    hp <= 0 -> " Пал в бою"
+    isInvulnerable -> "✨ Неуязвим"
+    isDefended -> "🛡️ Защищается"
+    hp < maxHp * 0.3 -> "🩸 Тяжело ранен"
+    hp < maxHp -> "⚔️ Сражается"
     else -> "🛡️ Готов к бою"
 }
 
@@ -347,9 +506,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    BattleScreen(
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    BattleScreen(modifier = Modifier.padding(innerPadding))
                 }
             }
         }
