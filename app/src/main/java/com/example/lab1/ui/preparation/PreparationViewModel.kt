@@ -1,53 +1,64 @@
 package com.example.lab1.ui.preparation
 
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.example.lab1.utils.NameGenerator
-
-data class TeamConfig(
-    val name: String,
-    val members: List<Pair<String, String>>
-)
+import com.example.lab1.ui.states.HeroSlot
+import com.example.lab1.ui.states.TeamConfig
 
 class PreparationViewModel : ViewModel() {
 
-    var playerTeam: List<Pair<String, String>> by mutableStateOf(emptyList())
+    var playerSlots by mutableStateOf(
+        listOf(
+            HeroSlot("Archer", NameGenerator.generateArcherName()),
+            HeroSlot("Warrior", NameGenerator.generateWarriorName()),
+            HeroSlot("Mage", NameGenerator.generateMageName())
+        )
+    )
         private set
 
-    var enemyTeam: List<Pair<String, String>> by mutableStateOf(emptyList())
+    var enemyTeam by mutableStateOf<List<Pair<String, String>>>(emptyList())
         private set
 
-    var selectedEnemyIndex: Int by mutableIntStateOf(-1)
+    var selectedEnemyIndex by mutableStateOf(-1)
         private set
 
-    val presetTeams: List<TeamConfig> = listOf(
+    val presetTeams = listOf(
         TeamConfig("Сбалансированный", NameGenerator.generateTeam(3)),
-        TeamConfig("Лучники", listOf(
-            "Archer" to NameGenerator.generateArcherName(),
-            "Archer" to NameGenerator.generateArcherName(),
-            "Archer" to NameGenerator.generateArcherName()
-        )),
-        TeamConfig("Воины", listOf(
-            "Warrior" to NameGenerator.generateWarriorName(),
-            "Warrior" to NameGenerator.generateWarriorName(),
-            "Warrior" to NameGenerator.generateWarriorName()
-        )),
-        TeamConfig("Маги", listOf(
-            "Mage" to NameGenerator.generateMageName(),
-            "Mage" to NameGenerator.generateMageName(),
-            "Mage" to NameGenerator.generateMageName()
-        ))
+        TeamConfig("Отряд Лучников", List(3) { "Archer" to NameGenerator.generateArcherName() }),
+        TeamConfig("Отряд Воинов", List(3) { "Warrior" to NameGenerator.generateWarriorName() }),
+        TeamConfig("Отряд Магов", List(3) { "Mage" to NameGenerator.generateMageName() })
     )
 
-    init {
-        generateRandomTeam()
+    fun updateSlotType(index: Int, newType: String) {
+        val newName = when (newType) {
+            "Archer" -> NameGenerator.generateArcherName()
+            "Warrior" -> NameGenerator.generateWarriorName()
+            "Mage" -> NameGenerator.generateMageName()
+            else -> "Неизвестно"
+        }
+        playerSlots = playerSlots.toMutableList().apply {
+            this[index] = HeroSlot(newType, newName)
+        }
     }
 
-    fun generateRandomTeam() {
-        playerTeam = NameGenerator.generateTeam(3)
+    fun updateSlotName(index: Int, newName: String) {
+        playerSlots = playerSlots.toMutableList().apply {
+            this[index] = this[index].copy(name = newName)
+        }
+    }
+
+    fun randomizeSlotName(index: Int) {
+        val currentType = playerSlots[index].type
+        val newName = when (currentType) {
+            "Archer" -> NameGenerator.generateArcherName()
+            "Warrior" -> NameGenerator.generateWarriorName()
+            "Mage" -> NameGenerator.generateMageName()
+            else -> "Неизвестно"
+        }
+        updateSlotName(index, newName)
     }
 
     fun selectPresetTeam(index: Int) {
@@ -57,6 +68,21 @@ class PreparationViewModel : ViewModel() {
         }
     }
 
-    fun canStartBattle(): Boolean =
-        playerTeam.isNotEmpty() && enemyTeam.isNotEmpty() && selectedEnemyIndex != -1
+    fun canStartBattle(): Boolean = selectedEnemyIndex != -1
+
+    fun getFinalPlayerTeam(): List<Pair<String, String>> {
+        return playerSlots.map { slot ->
+            val finalName = if (slot.name.isBlank()) {
+                when (slot.type) {
+                    "Archer" -> NameGenerator.generateArcherName()
+                    "Warrior" -> NameGenerator.generateWarriorName()
+                    "Mage" -> NameGenerator.generateMageName()
+                    else -> "Безымянный"
+                }
+            } else {
+                slot.name
+            }
+            slot.type to finalName
+        }
+    }
 }

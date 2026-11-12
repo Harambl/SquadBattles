@@ -32,11 +32,12 @@ fun WelcomeScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "⚔️ SQUAD BATTLES ⚔️",
+                text = "SQUAD BATTLES",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
+
 
             Spacer(Modifier.height(32.dp))
 

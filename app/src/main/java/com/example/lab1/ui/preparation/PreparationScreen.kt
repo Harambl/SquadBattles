@@ -1,31 +1,26 @@
 package com.example.lab1.ui.preparation
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.example.lab1.ui.states.PreparationUiState
 
 @Composable
 fun PreparationScreen(
-    viewModel: PreparationViewModel,
-    onStartBattle: (List<Pair<String, String>>, List<Pair<String, String>>) -> Unit
+    state: PreparationUiState,
+    onTypeChange: (Int, String) -> Unit,
+    onNameChange: (Int, String) -> Unit,
+    onRandomizeName: (Int) -> Unit,
+    onSelectEnemy: (Int) -> Unit,
+    onStartBattle: () -> Unit,
 ) {
     Scaffold { paddingValues ->
         Column(
@@ -34,122 +29,76 @@ fun PreparationScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            Text(
-                text = "🛡️ Подготовка к бою",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-
+            Text("🛡️ Сбор отряда", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(16.dp))
 
-            Text(
-                text = "Ваш отряд:",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-
+            Text("Ваши герои:", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(8.dp))
 
-            viewModel.playerTeam.forEach { (type, name) ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                ) {
+            state.playerSlots.forEachIndexed { index, slot ->
+                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = when (type) {
-                                "Archer" -> "🏹"
-                                "Warrior" -> "⚔️"
-                                "Mage" -> "🔮"
-                                else -> "❓"
-                            } + " $name",
-                            style = MaterialTheme.typography.bodyLarge
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                FilterChip(
+                                    selected = slot.type == "Archer",
+                                    onClick = { onTypeChange(index, "Archer") },
+                                    label = { Text("🏹") }
+                                )
+                                FilterChip(
+                                    selected = slot.type == "Warrior",
+                                    onClick = { onTypeChange(index, "Warrior") },
+                                    label = { Text("⚔️") }
+                                )
+                                FilterChip(
+                                    selected = slot.type == "Mage",
+                                    onClick = { onTypeChange(index, "Mage") },
+                                    label = { Text("🔮") }
+                                )
+                            }
+
+                            IconButton(onClick = { onRandomizeName(index) }) {
+                                Text("🎲", style = MaterialTheme.typography.titleMedium)
+                            }
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = slot.name,
+                            onValueChange = { onNameChange(index, it) },
+                            label = { Text("Имя героя (оставь пустым для случайного)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
                         )
                     }
                 }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = { viewModel.generateRandomTeam() },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("🎲 Случайный")
-                }
-            }
-
             Spacer(Modifier.height(24.dp))
 
-            Text(
-                text = "Выберите отряд противника:",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-
+            Text("Выберите отряд противника:", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(8.dp))
 
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
+                modifier = Modifier.weight(1f).fillMaxWidth()
             ) {
-                itemsIndexed(viewModel.presetTeams) { index, preset ->
-                    val isSelected = index == viewModel.selectedEnemyIndex
-
+                itemsIndexed(state.presetTeams) { index, preset ->
+                    val isSelected = index == state.selectedEnemyIndex
                     Card(
-                        onClick = { viewModel.selectPresetTeam(index) },
-                        colors = if (isSelected) {
-                            CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
-                            )
-                        } else {
-                            CardDefaults.cardColors()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(
-                            defaultElevation = if (isSelected) 4.dp else 1.dp
-                        )
+                        onClick = { onSelectEnemy(index) },
+                        colors = if (isSelected) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer) else CardDefaults.cardColors(),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = preset.name,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-
-                                if (isSelected) {
-                                    Text(
-                                        text = "✓",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                Text(preset.name, fontWeight = FontWeight.Bold)
+                                if (isSelected) Text("✓", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                             }
-
-                            Spacer(Modifier.height(4.dp))
-
                             preset.members.forEach { (type, name) ->
-                                Text(
-                                    text = "  ${when (type) {
-                                        "Archer" -> "🏹"
-                                        "Warrior" -> "⚔️"
-                                        "Mage" -> "🔮"
-                                        else -> "❓"
-                                    }} $name",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
+                                Text("  ${when(type) { "Archer" -> "🏹"; "Warrior" -> "⚔️"; "Mage" -> "🔮"; else -> "❓" }} $name", style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
@@ -160,9 +109,9 @@ fun PreparationScreen(
 
             Button(
                 onClick = {
-                    onStartBattle(viewModel.playerTeam, viewModel.enemyTeam)
+                    onStartBattle()
                 },
-                enabled = viewModel.canStartBattle(),
+                enabled = state.canStart,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("⚔️ В БОЙ!")

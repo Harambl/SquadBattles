@@ -11,16 +11,21 @@ import com.example.lab1.domain.Warrior
 import com.example.lab1.ui.states.HeroUiState
 import com.example.lab1.ui.states.BattleUiState
 
-class BattleViewModel(
-    private val team1Config: List<Pair<String, String>>,
-    private val team2Config: List<Pair<String, String>>
-) : ViewModel() {
+class BattleViewModel : ViewModel() {
 
+    private var team1Config: List<Pair<String, String>> = emptyList()
+    private var team2Config: List<Pair<String, String>> = emptyList()
     private var team1: List<Person> = emptyList()
     private var team2: List<Person> = emptyList()
 
     var state: BattleUiState by mutableStateOf(BattleUiState())
         private set
+
+    fun startBattle(team1Config: List<Pair<String, String>>, team2Config: List<Pair<String, String>>) {
+        this.team1Config = team1Config
+        this.team2Config = team2Config
+        initializeTeams()
+    }
 
     init {
         initializeTeams()
@@ -224,6 +229,42 @@ class BattleViewModel(
         } else {
             state.copy(currentTeam2Index = newIndex)
         }
+    }
+
+    fun restart() {
+        team1.forEach { person ->
+            person.health = person.maxHealth
+            person.isDefended = false
+            person.isInvulnerable = false
+            person.turnsRemaining = 0
+            when (person) {
+                is Archer -> person.countSpec = 0
+                is Warrior -> person.countSpec = 0
+                is Mage -> person.countSpec = 0
+            }
+        }
+
+        team2.forEach { person ->
+            person.health = person.maxHealth
+            person.isDefended = false
+            person.isInvulnerable = false
+            person.turnsRemaining = 0
+            when (person) {
+                is Archer -> person.countSpec = 0
+                is Warrior -> person.countSpec = 0
+                is Mage -> person.countSpec = 0
+            }
+        }
+
+        state = state.copy(
+            currentTeam1Index = 0,
+            currentTeam2Index = 0,
+            isTeam1Turn = true,
+            winnerMessage = null,
+            battleLog = ""
+        )
+
+        updateUiState()
     }
 
 }
