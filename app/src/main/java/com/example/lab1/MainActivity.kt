@@ -3,69 +3,69 @@ package com.example.lab1
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.mutableStateOf
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.ui.NavDisplay
+import com.example.lab1.navigation.BattleKey
+import com.example.lab1.navigation.Navigator
+import com.example.lab1.navigation.PreparationKey
+import com.example.lab1.navigation.TeamMember
+import com.example.lab1.navigation.WelcomeKey
+import com.example.lab1.navigation.rememberNavigationState
+import com.example.lab1.navigation.toEntries
 import com.example.lab1.ui.battle.BattleRoute
 import com.example.lab1.ui.preparation.PreparationRoute
 import com.example.lab1.ui.welcome.WelcomeRoute
 
-sealed class Screen(val route: String) {
-    object Welcome : Screen("welcome")
-    object Preparation : Screen("preparation")
-    object Battle : Screen("battle")
-}
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            AppNavigation()
-        }
+        enableEdgeToEdge()
+        setContent { App() }
     }
 }
 
 @Composable
-fun AppNavigation() {
-    val navController = rememberNavController()
+fun App() {
+    val navigationState = rememberNavigationState(
+        startRoute = WelcomeKey,
+        topLevelRoutes = setOf(WelcomeKey)
+    )
+    val navigator = remember { Navigator(navigationState) }
 
-    var playerTeam by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
-    var enemyTeam by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
-
-    NavHost(
-        navController = navController,
-        startDestination = Screen.Welcome.route
-    ) {
-        composable(Screen.Welcome.route) {
+    val entryProvider = entryProvider {
+        entry<WelcomeKey> {
             WelcomeRoute(
-                onStartClick = { navController.navigate(Screen.Preparation.route) }
+                onStartClick = { navigator.navigate(PreparationKey) }
             )
         }
 
-        composable(Screen.Preparation.route) {
+        entry<PreparationKey> {
             PreparationRoute(
-                onStartBattle = { pTeam, eTeam ->
-                    playerTeam = pTeam
-                    enemyTeam = eTeam
-                    navController.navigate(Screen.Battle.route)
-
+                onStartBattle = { playerTeam, enemyTeam ->
+                    navigator.navigate(
+                        BattleKey(
+                            playerTeam = playerTeam.map { TeamMember(it.first, it.second) },
+                            enemyTeam = enemyTeam.map { TeamMember(it.first, it.second) }
+                        )
+                    )
                 }
             )
         }
 
-        composable(Screen.Battle.route) {
+        entry<BattleKey> { key ->
             BattleRoute(
-                playerTeam = playerTeam,
-                enemyTeam = enemyTeam,
-                onBattleEnd = {
-                    navController.popBackStack()
-                }
+                playerTeam = key.playerTeam.map { it.type to it.name },
+                enemyTeam = key.enemyTeam.map { it.type to it.name },
+                onBattleEnd = { navigator.goBack() }
             )
         }
     }
+
+    NavDisplay(
+        entries = navigationState.toEntries(entryProvider),
+        onBack = { navigator.goBack() }
+    )
 }

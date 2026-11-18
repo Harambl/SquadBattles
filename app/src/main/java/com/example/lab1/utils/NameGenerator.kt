@@ -1,6 +1,10 @@
 package com.example.lab1.utils
 
+import com.example.lab1.domain.Warrior
+
 object NameGenerator {
+
+    private val classNames = listOf("Archer", "Warrior", "Mage")
     private val archerNames = listOf(
         "Леголас", "Грин", "Стрелок", "Ксавье", "Орлиный Глаз",
         "Ветер", "Точный", "Лесной Бегун", "Сокол", "Ястреб"
@@ -20,13 +24,15 @@ object NameGenerator {
     fun generateWarriorName(): String = warriorNames.random()
     fun generateMageName(): String = mageNames.random()
 
-    fun generateTeam(size: Int = 3): List<Pair<String, String>> {
+    fun generateTeam(size: Int): List<Pair<String, String>> {
         val team = mutableListOf<Pair<String, String>>()
-        repeat(size) { index ->
-            when (index % 3) {
-                0 -> team.add("Archer" to generateArcherName())
-                1 -> team.add("Warrior" to generateWarriorName())
-                2 -> team.add("Mage" to generateMageName())
+        var className: String
+        for (index in 1..size){
+            className = classNames.random()
+            when (className) {
+                "Archer" -> team.add(className to generateArcherName())
+                "Warrior" -> team.add(className to generateWarriorName())
+                "Mage" -> team.add(className to generateMageName())
             }
         }
         return team

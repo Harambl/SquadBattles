@@ -9,17 +9,26 @@ fun PreparationRoute(
     viewModel: PreparationViewModel = viewModel(),
     onStartBattle: (List<Pair<String, String>>, List<Pair<String, String>>) -> Unit
 ) {
+
+    val uiState = PreparationUiState(
+        playerSlots = viewModel.playerSlots,
+        currentMode = viewModel.currentMode,
+        challengesState = viewModel.challengesState,
+        presetTeams = viewModel.presetTeams,
+        selectedEnemyIndex = viewModel.selectedEnemyIndex,
+        selectedChallengeId = viewModel.selectedChallengeId,
+        canStartBattle = viewModel.canStartBattle()
+    )
+
     PreparationScreen(
-        state = PreparationUiState(
-            playerSlots = viewModel.playerSlots,
-            presetTeams = viewModel.presetTeams,
-            selectedEnemyIndex = viewModel.selectedEnemyIndex,
-            canStart = viewModel.canStartBattle()
-        ),
-        onTypeChange = { index, type -> viewModel.updateSlotType(index, type) },
-        onNameChange = { index, name -> viewModel.updateSlotName(index, name) },
-        onRandomizeName = { index -> viewModel.randomizeSlotName(index) },
-        onSelectEnemy = { index -> viewModel.selectPresetTeam(index) },
+        state = uiState,
+        onSlotTypeChange = { index, type -> viewModel.updateSlotType(index, type) },
+        onSlotNameChange = { index, name -> viewModel.updateSlotName(index, name) },
+        onSlotNameRandomize = { index -> viewModel.randomizeSlotName(index) },
+        onModeChange = { mode -> viewModel.switchMode(mode) },
+        onPresetSelect = { index -> viewModel.selectPresetTeam(index) },
+        onChallengeSelect = { challenge -> viewModel.selectChallenge(challenge) },
+        onNetworkRetry = { viewModel.retryLoad() },
         onStartBattle = {
             onStartBattle(viewModel.getFinalPlayerTeam(), viewModel.enemyTeam)
         }

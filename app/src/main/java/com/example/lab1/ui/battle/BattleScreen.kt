@@ -33,7 +33,7 @@ fun BattleScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("⚔️ АРЕНА ⚔️", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text("ПОЛЕ БОЯ", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
 
                 val hero1 = state.team1.getOrNull(state.currentTeam1Index)
                 if (hero1 != null) HeroCard(hero = hero1, isActive = state.isTeam1Turn && hero1.isAlive)
@@ -62,7 +62,16 @@ fun BattleScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             Button(onClick = onAttackClick, modifier = Modifier.weight(1f)) { Text("Атака") }
                             Button(onClick = onDefendClick, modifier = Modifier.weight(1f)) { Text("Защита") }
-                            Button(onClick = onSpecClick, modifier = Modifier.weight(1f)) { Text("Спец.") }
+
+                            val isSpecAvailable = currentHero != null && currentHero.specUses < 2
+
+                            Button(
+                                onClick = onSpecClick,
+                                modifier = Modifier.weight(1f),
+                                enabled = isSpecAvailable
+                            ) {
+                                Text(if (isSpecAvailable) "Спец." else "Спец. (0)")
+                            }
                         }
                         Spacer(Modifier.height(8.dp))
                         OutlinedButton(onClick = onSwitchHeroClick, modifier = Modifier.fillMaxWidth()) { Text("🔄 Сменить героя") }
